@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Wasm test</title>
+		<script>
+			window.wasm_check = true;
+			
+			if (!('WebAssembly' in window)) {
+				alert('You using too old brouser. It\'s not supporting web assembley, that uses on this page. Please, download chrome or firefox instead.');
+				window.wasm_check = false;
+			}
+		</script>
+	</head>
+	<body>
+		
+		<input type="button" id="run" value="(waiting for WebAssembly)"/>
+		<input type="button" id="sqrt" value="(waiting for WebAssembly)"/>
+		
+		<!-- Scripts -->
+		<div style="display: none;">
+			<script>
+				(function (check) {
+					if (!check) return;
+				
+					function loadWebAssembly(filename, imports) {
+						return fetch(filename)
+							.then(response => response.arrayBuffer())
+							.then(buffer => WebAssembly.compile(buffer))
+							.then(module => {
+								imports = imports || {};
+								imports.env = imports.env || {};
+								imports.env.memoryBase = imports.env.memoryBase || 0;
+								imports.env.tableBase = imports.env.tableBase || 0;
+								
+								if (!imports.env.memory) {
+									imports.env.memory = new WebAssembly.Memory({ initial: 256 });
+								}
+								
+								if (!imports.env.table) {
+									imports.env.table = new WebAssembly.Table({ initial: 0, element: 'anyfunc' });
+								}
+								
+								return new WebAssembly.Instance(module, imports);
+							});
+					}
+					
+					loadWebAssembly('test.wasm')
+						.then(instance => {
+							var exports = instance.exports; // the exports of that instance
+							var divide = exports.division; // the "doubler" function (note "_" prefix)
+							// now we are ready, set up the button so the user can run the code
+							var button = document.getElementById('run');
+							button.value = 'Call a method in the WebAssembly module';
+							
+							button.addEventListener('click', function() {
+								var a = 21, b = 3;
+								alert(a + ' divided by ' + b + ' is ' + divide(a, b));
+							}, false);
+						}
+					);
+					
+					loadWebAssembly('q_rsqrt.wasm')
+						.then(instance => {
+							var exports = instance.exports; // the exports of that instance
+							var sqrt = exports.Q_rsqrt; // the "doubler" function (note "_" prefix)
+							// now we are ready, set up the button so the user can run the code
+							var button = document.getElementById('sqrt');
+							button.value = 'Call a Q_rsqrt in the WebAssembly module';
+							
+							button.addEventListener('click', function() {
+								var a = parseFloat(prompt("Enter a Value", "0"));
+								alert(a + ' Q_rsqrt is ' + sqrt(a));
+							}, false);
+						}
+					);
+				})(window.wasm_check);
+			</script>
+		</div>
+	</body>
+</html>
